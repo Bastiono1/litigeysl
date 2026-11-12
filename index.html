@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Poste Litiges</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout : une colonne de travail, un stepper en 4 étapes, une seule étape visible à la fois ; Réglages à part */
+:root{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#18212b; --muted:#5b6977; --line:#d6dde4; --soft:#e8edf2;
+  --accent:#1d5d8c; --accent-ink:#ffffff; --accent-soft:#dbe8f3;
+  --ok:#1e7a4c; --ok-soft:#dcf1e5; --ko:#b3352b; --ko-soft:#f8e0dd; --warn:#9a6208; --warn-soft:#fbecd2;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; --r:8px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#11161c; --panel:#18202a; --ink:#e4e9ee; --muted:#98a6b3; --line:#2b3642; --soft:#202a35;
+  --accent:#6aa8d8; --accent-ink:#0d1620; --accent-soft:#1d3346;
+  --ok:#5cc28d; --ok-soft:#173326; --ko:#ef8378; --ko-soft:#3a1d1a; --warn:#e6b45a; --warn-soft:#3a2c13; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;padding:20px max(16px,env(safe-area-inset-right)) 64px max(16px,env(safe-area-inset-left))}
+[hidden]{display:none!important}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:1.45rem;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0;font-size:.9rem}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+nav.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+nav.steps button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);font-weight:600}
+nav.steps button .k{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;color:var(--muted);font-weight:500}
+nav.steps button .s{font-size:.78rem;color:var(--muted);font-weight:500}
+nav.steps button[aria-current="step"]{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+nav.steps button.done .s{color:var(--ok)}
+nav.steps button:disabled{opacity:.5}
+section.view{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+h2{margin:0;font-size:1.15rem} h3{margin:0;font-size:1rem}
+.lead{margin:0;color:var(--muted);max-width:68ch}
+.routine{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin:0;padding:0;list-style:none;counter-reset:r}
+.routine li{background:var(--soft);border-radius:6px;padding:10px 12px;font-size:.9rem;counter-increment:r}
+.routine li::before{content:counter(r);font-family:var(--f-mono);font-weight:600;color:var(--accent);margin-right:8px}
+button,.btn{font:inherit;font-weight:600;font-size:.9rem;border-radius:6px;padding:8px 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+button:hover,.btn:hover{border-color:var(--accent)}
+.primary{background:var(--accent)!important;border-color:var(--accent)!important;color:var(--accent-ink)!important}
+.big{padding:11px 18px;font-size:.98rem}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.spread{justify-content:space-between}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+textarea{width:100%;font-family:var(--f-mono);font-size:.85rem;line-height:1.45;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color:var(--muted);font-weight:500;min-width:0}
+label.f input,label.f select{font-size:.92rem}
+.note{color:var(--muted);font-size:.86rem;margin:0}
+.msg{padding:10px 12px;border-radius:6px;font-size:.9rem}
+.msg.warn{background:var(--warn-soft);color:var(--warn)} .msg.err{background:var(--ko-soft);color:var(--ko)} .msg.ok{background:var(--ok-soft);color:var(--ok)} .msg.info{background:var(--accent-soft);color:var(--ink)}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--soft)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.slot{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:6px;background:var(--panel);border:1px solid var(--line);min-width:0}
+.slot b{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.slot span{overflow-wrap:anywhere;font-size:.88rem;color:var(--muted)}
+.slot.ok{border-color:var(--ok)} .slot.ok span{color:var(--ok)}
+.bar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.pagelist{display:flex;flex-wrap:wrap;gap:4px}
+.pg{font-family:var(--f-mono);font-size:.74rem;padding:2px 7px;border-radius:4px;background:var(--soft);color:var(--muted)}
+.pg.ok{background:var(--ok-soft);color:var(--ok)} .pg.err{background:var(--ko-soft);color:var(--ko)} .pg.run{background:var(--accent-soft);color:var(--accent)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.stat{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;cursor:pointer;background:var(--panel);text-align:left;font:inherit;color:var(--ink)}
+.stat b{font-size:1.4rem;font-family:var(--f-mono)} .stat span{font-size:.8rem;color:var(--muted)}
+.stat.warn b{color:var(--warn)} .stat.ko b{color:var(--ko)} .stat.ok b{color:var(--ok)}
+.stat[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.chip{font-size:.76rem;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.ko{background:var(--ko-soft);color:var(--ko)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{border:1px solid var(--line);border-left:5px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:110px 1fr;gap:14px;background:var(--panel);min-width:0}
+.card.v-OUI{border-left-color:var(--ok)} .card.v-NON{border-left-color:var(--ko)} .card.v-A_TRANCHER{border-left-color:var(--warn);background:linear-gradient(var(--warn-soft),var(--warn-soft)) top/100% 0 no-repeat,var(--panel)} .card.v-IGNORER{opacity:.62}
+.thumbs{display:flex;flex-direction:column;gap:6px}
+.thumbs img{width:110px;border:1px solid var(--line);border-radius:4px;cursor:zoom-in;background:#fff}
+.cbody{display:flex;flex-direction:column;gap:10px;min-width:0}
+.chead{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.chead .bl{font-family:var(--f-mono);font-weight:600;font-size:1.05rem}
+.chead .ag{font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-left:auto}
+.seg button{border:0;border-radius:0;padding:7px 11px;font-size:.82rem;background:transparent}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"].OUI{background:var(--ok);color:var(--panel)}
+.seg button[aria-pressed="true"].NON{background:var(--ko);color:var(--panel)}
+.seg button[aria-pressed="true"].A_TRANCHER{background:var(--warn);color:var(--panel)}
+.seg button[aria-pressed="true"].IGNORER{background:var(--muted);color:var(--panel)}
+.why{font-size:.86rem;margin:0;padding:6px 10px;border-radius:6px;background:var(--warn-soft);color:var(--warn)}
+.why.soft{background:var(--soft);color:var(--muted)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:5px 6px;border-bottom:1px solid var(--line)}
+td{padding:4px 6px;border-bottom:1px solid var(--soft)}
+.lines input{width:100%;font-family:var(--f-mono);font-size:.88rem}
+.lines td.x{width:34px} .lines td.q{width:90px}
+.lines tr.dup td{background:var(--warn-soft)}
+.part{border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.part-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.part-h .n{font-family:var(--f-mono);color:var(--accent);font-weight:600}
+.log{font-family:var(--f-mono);font-size:.82rem;background:var(--soft);border-radius:6px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;margin:0}
+.mails{display:flex;flex-direction:column;gap:12px}
+.mail{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.mail.sent{opacity:.6}
+.mail h3{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mail .sentbox{margin-left:auto;font-size:.85rem;font-weight:500;display:flex;gap:6px;align-items:center;color:var(--muted)}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.box{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.team{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}
+.mate{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:.88rem;min-width:0}
+.mate span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mate .mono{color:var(--muted);font-size:.76rem}
+.mate select{font-size:.82rem;padding:3px 4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:.84rem;background:var(--soft);border-radius:999px;padding:2px 4px 2px 10px}
+.tag button{padding:0 6px;border:0;background:transparent;font-size:1rem}
+.dir td input{width:100%}
+.zoom{position:fixed;inset:0;background:rgba(10,14,18,.85);display:flex;align-items:flex-start;justify-content:center;overflow:auto;z-index:20;padding:16px}
+.zoom img{max-width:min(1000px,100%);background:#fff;border-radius:4px}
+.overlay{position:fixed;inset:0;background:rgba(10,14,18,.6);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.overlay form{background:var(--panel);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;width:min(380px,100%)}
+.empty{color:var(--muted);font-size:.92rem;border:1px dashed var(--line);border-radius:var(--r);padding:16px}
+@media (max-width:640px){nav.steps{grid-template-columns:repeat(2,1fr)}.card{grid-template-columns:1fr}.thumbs{flex-direction:row;flex-wrap:wrap}.thumbs img{width:84px}.seg{margin-left:0}}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>Poste Litiges</h1><p class="sub">Yesss Saulce Logistique · traitement du scan du soir</p></div>
+    <div class="who">
+      <label class="f" style="flex-direction:row;align-items:center;gap:6px">Je suis
+        <select id="me"></select></label>
+      <button id="open-settings">Réglages</button>
+    </div>
+  </header>
+  <div id="store-msg"></div>
+
+  <nav class="steps" id="steps" aria-label="Étapes">
+    <button data-step="1"><span class="k">ÉTAPE 1</span>Déposer<span class="s" id="st1">scan + 4 tableaux</span></button>
+    <button data-step="2"><span class="k">ÉTAPE 2</span>Lecture<span class="s" id="st2">automatique</span></button>
+    <button data-step="3"><span class="k">ÉTAPE 3</span>Vérifier<span class="s" id="st3">trancher les doutes</span></button>
+    <button data-step="4"><span class="k">ÉTAPE 4</span>Tableaux et mails<span class="s" id="st4">télécharger, envoyer</span></button>
+  </nav>
+
+  <!-- 1 -->
+  <section class="view" data-view="1">
+    <h2>Déposer le scan et les tableaux</h2>
+    <ul class="routine">
+      <li>Dépose le PDF du scan et les 4 Excel du jour.</li>
+      <li>Claude lit chaque BL : le oui/non écrit, l'agence, les refs.</li>
+      <li>Tu vérifies, surtout les BL en orange « À trancher ».</li>
+      <li>Tu télécharges les tableaux à jour et tu envoies les mails.</li>
+    </ul>
+    <div class="drop" id="drop">
+      <div class="slots" id="slots"></div>
+      <div class="row">
+        <label class="btn" for="pick">Choisir les fichiers</label>
+        <input id="pick" type="file" multiple accept=".pdf,.xlsx" hidden>
+        <span class="note">ou glisse-les ici, tous en même temps. Je les reconnais à leur nom.</span>
+      </div>
+    </div>
+    <div id="s1-msg"></div>
+    <div class="row spread"><span class="note" id="pick-note"></span><button class="primary big" id="go" disabled>Lire le scan →</button></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="view" data-view="2" hidden>
+    <h2>Lecture des BL</h2>
+    <p class="lead">Claude lit les pages trois par trois. Compte environ 10 secondes par page. Tu peux laisser l'onglet ouvert et revenir.</p>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="row spread"><span class="mono" id="prog-txt"></span><button id="retry" hidden>Relire les pages en erreur</button></div>
+    <div class="pagelist" id="pagelist"></div>
+    <div id="s2-msg"></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="view" data-view="3" hidden>
+    <div class="row spread">
+      <h2>Vérifier les BL</h2>
+      <label class="f" style="flex-direction:row;align-items:center;gap:6px">Jour du récap <input id="recap-day" class="mono" size="10" placeholder="jj/mm/aaaa"></label>
+    </div>
+    <div id="s3-msg"></div>
+    <div class="summary" id="summary"></div>
+    <div class="cards" id="cards"></div>
+    <div class="row spread"><button id="add-bl">+ Ajouter un BL oublié</button><button class="primary big" id="to4">Passer aux tableaux et mails →</button></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="view" data-view="4" hidden>
+    <h2>Tableaux et mails</h2>
+    <div id="s4-msg"></div>
+    <div class="part">
+      <div class="part-h"><span class="n">A</span><h3>Mettre à jour les 4 tableaux</h3></div>
+      <p class="note">J'ajoute les renvois et les refus, +1 par renvoi dans le tableau des agences et +1 par emballeur dans le tableau des litigeurs, à la date du récap. Ce qui est déjà saisi n'est jamais ajouté deux fois.</p>
+      <div class="row"><button class="primary" id="apply">Remplir les tableaux</button></div>
+      <pre class="log" id="log" hidden></pre>
+      <div class="row" id="dl" hidden></div>
+    </div>
+    <div class="part">
+      <div class="part-h"><span class="n">B</span><h3>Envoyer le récap à Séb et les réponses aux agences</h3><span class="note" id="sent-count"></span></div>
+      <p class="note">« Ouvrir dans Outlook » prépare le brouillon dans Outlook web. Tu relis et tu envoies, puis tu coches « Envoyé » pour t'y retrouver.</p>
+      <div class="mails" id="mails"><div class="empty">Les mails apparaissent ici après l'étape A.</div></div>
+    </div>
+  </section>
+
+  <!-- Réglages -->
+  <section class="view" data-view="R" hidden>
+    <div class="row spread"><h2>Réglages</h2><button id="close-settings">← Revenir au traitement</button></div>
+    <p class="note" id="store-where"></p>
+    <div class="settings-grid">
+      <div class="box">
+        <h3>Qui utilise le site</h3>
+        <div class="tablewrap"><table><thead><tr><th>Prénom</th><th>Signature des mails</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
+        <div class="row"><input id="new-user" placeholder="Prénom de la collègue"><button id="add-user">Ajouter</button></div>
+      </div>
+      <div class="box">
+        <h3>Récap du soir</h3>
+        <label class="f">Envoyé à<input id="set-recap" type="email" placeholder="adresse de Séb"></label>
+        <label class="f">Prénom au début du mail<input id="set-recapname" placeholder="Séb"></label>
+      </div>
+      <div class="box">
+        <h3>Initiales jamais comptées</h3>
+        <p class="note">Les initiales imprimées en bas du BL sont celles de la personne qui a emballé. Mets ici celles des personnes du service litiges, qui ne comptent pas comme litigeurs.</p>
+        <div class="tags" id="exclus"></div>
+        <div class="row"><input id="new-excl" class="mono" size="5" maxlength="3" placeholder="ABC"><button id="add-excl">Ajouter</button></div>
+      </div>
+    </div>
+    <div class="box">
+      <h3>Petites et grandes barres</h3>
+      <p class="note">Pour chaque emballeur : ses initiales, telles qu'elles sont imprimées en bas des BL, et sa ligne (utilisée pour la conclusion du récap). En principe, les initiales sont la 1re lettre du prénom + les 2 premières du nom. Corrige-les ici pour les exceptions. « ⚠ doublon » veut dire que deux personnes ont les mêmes initiales : sur leurs BL, je te demanderai de choisir. La liste vient du dernier tableau des litigeurs déposé.</p>
+      <div class="team" id="team"><div class="empty">Dépose une fois le tableau des litigeurs pour voir l'équipe.</div></div>
+    </div>
+    <div class="box">
+      <h3>Adresses des agences</h3>
+      <p class="note">Par défaut, j'écris à <span class="mono">nom-de-l-agence@<span id="dom-show"></span></span> (AGDE → <span class="mono" id="dom-ex"></span>). Si une agence a une autre adresse, saisis-la ici : elle remplace l'adresse par défaut.</p>
+      <div class="fields">
+        <label class="f">Domaine des agences<input id="set-domain" class="mono" placeholder="yesss-fr.com"></label>
+        <label class="f">Entre les mots du nom<select id="set-sep"><option value="-">tiret : saint-etienne</option><option value=".">point : saint.etienne</option><option value="_">souligné : saint_etienne</option><option value="">collé : saintetienne</option></select></label>
+      </div>
+      <div class="row"><input id="dir-q" placeholder="Chercher une agence"><span class="note" id="dir-n"></span></div>
+      <div class="tablewrap"><table class="dir"><thead><tr><th>Agence</th><th>Adresse mail</th></tr></thead><tbody id="dir"></tbody></table></div>
+    </div>
+  </section>
+</div>
+
+<div class="zoom" id="zoom" hidden><img id="zoom-img" alt="Page scannée agrandie"></div>
+<div class="overlay" id="login" hidden>
+  <form id="login-form"><h3>Mot de passe du poste</h3><p class="note">Le même pour toute l'équipe litiges.</p>
+    <input id="pw" type="password" autocomplete="current-password" required><span class="note" id="pw-err"></span>
+    <button class="primary" type="submit">Entrer</button></form>
+</div>
+
+<script src="/vendor/pdf.min.js"></script>
+<script src="/vendor/exceljs.min.js"></script>
+<script>
+(() => {
+"use strict";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MOIS = ["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"];
+const noAcc = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const normName = s => noAcc(s).toUpperCase().replace(/[-'’]/g, " ").replace(/\bST\b/g, "SAINT").replace(/\s+/g, " ").trim();
+const normRef = s => String(s ?? "").toUpperCase().replace(/^YSL_/, "").replace(/__.*$/, "").replace(/\s+/g, "").replace(/^0+(?=\w)/, "");
+const normBL = s => String(s ?? "").replace(/\D/g, "").replace(/^0+/, "");
+const slug = s => normName(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+             set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+const SLOTS = [["pdf","Scan des litiges (PDF)"],["litiges","LITIGES_CMD_ET_BL"],["refus","REFUS_LITIGES"],["agences","TABLEAU_LITIGES_AGENCES"],["litigeurs","TABLEAU_LITIGEURS"]];
+const S = { step: 1, files: { pdf: [] }, wb: {}, agByCode: {}, agNames: [], litigeurs: [], exOui: new Set(), exRefus: new Set(), exRefusBL: new Set(),
+  pages: [], bls: [], outputs: [], filter: "ALL", read: false, applied: false, sent: {} };
+
+/* ================= serveur ================= */
+let PW = ls.get("pl-pw", "");
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "content-type": "application/json", "x-app-password": PW, ...(opts.headers || {}) } });
+  if (r.status === 401) { showLogin(); throw Object.assign(new Error("Mot de passe demandé."), { code: 401 }); }
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) throw Object.assign(new Error(j?.error || ("Erreur " + r.status)), { code: r.status, detail: j?.detail });
+  return j;
+}
+let loginWaiters = [];
+function showLogin() { $("#login").hidden = false; $("#pw").focus(); return new Promise(r => loginWaiters.push(r)); }
+$("#login-form").addEventListener("submit", async e => {
+  e.preventDefault(); PW = $("#pw").value; ls.set("pl-pw", PW);
+  try { await api("/api/config"); } catch (err) { if (err.code === 401) { $("#pw-err").textContent = "Ce n'est pas le bon mot de passe."; return; } }
+  $("#login").hidden = true; $("#pw-err").textContent = ""; loginWaiters.splice(0).forEach(f => f()); loadConfig();
+});
+
+/* ================= réglages partagés ================= */
+let CFG = { recapTo: "", recapName: "Séb", exclus: ["BPA"], barres: {}, emails: {}, signatures: {}, users: ["Bastien"], equipe: [], agNames: [], initiales: {} };
+// Exceptions connues à la règle « 1re lettre du prénom + 2 du nom »
+const INIT_DEFAUT = { "GUICHARD MATHEO": "MGI", "GUILIANI MARIE": "MGU", "CAVRO CHRISTELLE": "CAC", "CAFFIN CANDICE": "CCA" };
+const baseInit = l => noAcc((l.pre || "")[0] + (l.nom || "").slice(0, 2)).toUpperCase();
+function refreshInits(list) {
+  list.forEach(l => { l.init = (CFG.initiales?.[l.key] || INIT_DEFAUT[l.key] || baseInit(l)).toUpperCase(); });
+  list.forEach(l => l.clash = list.filter(m => m.init === l.init).length > 1);
+}
+let SHARED = false;
+async function loadConfig() {
+  try { const c = await api("/api/config"); SHARED = true; CFG = { ...CFG, ...c }; }
+  catch (e) { if (e.code === 401) return; SHARED = false; CFG = { ...CFG, ...ls.get("pl-cfg", {}) }; }
+  $("#store-msg").innerHTML = SHARED ? "" : `<div class="msg warn">Les réglages ne sont enregistrés que sur cet ordinateur : la base partagée n'est pas branchée (voir le guide d'installation, étape 4). Ta collègue ne verra pas les adresses et l'équipe que tu saisis.</div>`;
+  $("#store-where").textContent = SHARED ? "Ces réglages sont partagés : tout le monde sur le poste voit les mêmes." : "Ces réglages ne sont enregistrés que sur cet ordinateur.";
+  refreshInits(S.litigeurs); refreshInits(CFG.equipe || []);
+  renderUsers(); renderSettings(); renderTeam(); renderDir(); if (S.bls.length) { S.bls.forEach(b => { if (!b.touchedLit) applyGuess(b); }); renderCards(); } renderMails();
+}
+async function saveCfg(patch) {
+  for (const [k, v] of Object.entries(patch)) {
+    if (v && typeof v === "object" && !Array.isArray(v)) { CFG[k] = { ...(CFG[k] || {}), ...v }; for (const [kk, vv] of Object.entries(v)) if (vv === null) delete CFG[k][kk]; }
+    else CFG[k] = v;
+  }
+  if (SHARED) { try { await api("/api/config", { method: "PUT", body: JSON.stringify(patch) }); } catch (e) { flash("#store-msg", "err", "Réglage non enregistré : " + e.message); } }
+  else ls.set("pl-cfg", CFG);
+}
+const flash = (sel, kind, txt) => { $(sel).innerHTML = txt ? `<div class="msg ${kind}">${esc(txt)}</div>` : ""; };
+
+/* utilisateurs */
+let ME = ls.get("pl-me", "");
+function renderUsers() {
+  if (!CFG.users.length) CFG.users = ["Bastien"];
+  if (!CFG.users.includes(ME)) ME = CFG.users[0];
+  $("#me").innerHTML = CFG.users.map(u => `<option${u === ME ? " selected" : ""}>${esc(u)}</option>`).join("");
+  $("#users").innerHTML = CFG.users.map((u, i) => `<tr><td>${esc(u)}</td><td><input id="sig-${i}" data-sig="${esc(u)}" value="${esc(CFG.signatures[u] || "")}" placeholder="${esc(u)} – Service litiges"></td><td>${CFG.users.length > 1 ? `<button data-deluser="${esc(u)}" aria-label="Retirer ${esc(u)}">×</button>` : ""}</td></tr>`).join("");
+}
+$("#me").addEventListener("change", e => { ME = e.target.value; ls.set("pl-me", ME); renderMails(); });
+$("#add-user").addEventListener("click", () => { const u = $("#new-user").value.trim(); if (!u || CFG.users.includes(u)) return; $("#new-user").value = ""; saveCfg({ users: [...CFG.users, u] }); renderUsers(); });
+$("#users").addEventListener("change", e => { const u = e.target.dataset.sig; if (u) { saveCfg({ signatures: { [u]: e.target.value.trim() } }); renderMails(); } });
+$("#users").addEventListener("click", e => { const u = e.target.dataset.deluser; if (u) { saveCfg({ users: CFG.users.filter(x => x !== u) }); renderUsers(); } });
+
+/* récap + exclusions */
+function renderSettings() {
+  $("#set-recap").value = CFG.recapTo || ""; $("#set-recapname").value = CFG.recapName || "";
+  $("#exclus").innerHTML = (CFG.exclus || []).map(x => `<span class="tag">${esc(x)}<button data-delx="${esc(x)}" aria-label="Retirer ${esc(x)}">×</button></span>`).join("") || '<span class="note">Aucune.</span>';
+}
+$("#set-recap").addEventListener("change", e => { saveCfg({ recapTo: e.target.value.trim() }); renderMails(); });
+$("#set-recapname").addEventListener("change", e => { saveCfg({ recapName: e.target.value.trim() }); renderMails(); });
+$("#add-excl").addEventListener("click", () => { const x = noAcc($("#new-excl").value).toUpperCase().replace(/[^A-Z]/g, ""); if (!x || CFG.exclus.includes(x)) return; $("#new-excl").value = ""; saveCfg({ exclus: [...CFG.exclus, x] }); renderSettings(); });
+$("#exclus").addEventListener("click", e => { const x = e.target.dataset.delx; if (x) { saveCfg({ exclus: CFG.exclus.filter(y => y !== x) }); renderSettings(); } });
+
+/* équipe */
+function team() { return S.litigeurs.length ? S.litigeurs : (CFG.equipe || []); }
+function renderTeam() {
+  const t = team(); if (!t.length) return; refreshInits(t);
+  $("#team").innerHTML = t.map((l, i) => `<div class="mate"><span>${esc(l.pre)} ${esc(l.nom)}${l.clash ? ' <span class="chip warn">⚠ doublon</span>' : ""}</span>
+    <span class="row" style="gap:4px;flex-wrap:nowrap"><input id="ti${i}" class="mono" data-init="${esc(l.key)}" value="${esc(l.init)}" size="3" maxlength="3" aria-label="Initiales de ${esc(l.pre)} ${esc(l.nom)}">
+    <select id="tm${i}" data-key="${esc(l.key)}" aria-label="Ligne de ${esc(l.pre)} ${esc(l.nom)}"><option value="">—</option><option value="P"${CFG.barres[l.key] === "P" ? " selected" : ""}>Petites</option><option value="G"${CFG.barres[l.key] === "G" ? " selected" : ""}>Grandes</option></select></span></div>`).join("");
+}
+$("#team").addEventListener("change", e => {
+  const k = e.target.dataset.key; if (k) { saveCfg({ barres: { [k]: e.target.value || null } }); renderMails(); return; }
+  const ik = e.target.dataset.init; if (!ik) return;
+  const v = noAcc(e.target.value).toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
+  const l = team().find(x => x.key === ik);
+  saveCfg({ initiales: { [ik]: v && v !== baseInit(l || {}) || INIT_DEFAUT[ik] ? v || null : null } });
+  refreshInits(S.litigeurs); refreshInits(CFG.equipe || []); renderTeam();
+  if (S.bls.length) { S.bls.forEach(b => { if (!b.touchedLit) applyGuess(b); }); renderCards(); renderMails(); }
+});
+
+/* annuaire */
+function renderDir() {
+  const names = [...new Set([...(S.agNames.length ? S.agNames : CFG.agNames || []), ...Object.values(CFG.emails).map(v => v.nom)])].sort();
+  const q = normName($("#dir-q").value);
+  const tonight = new Set(S.bls.map(b => normName(b.agence)));
+  const rows = names.filter(n => q ? normName(n).includes(q) : (tonight.has(normName(n)) || CFG.emails[slug(n)]?.email)).slice(0, 60);
+  const filled = names.filter(n => CFG.emails[slug(n)]?.email).length;
+  $("#dir-n").textContent = names.length ? `${filled} adresse(s) enregistrée(s) sur ${names.length} agences.${q ? "" : " Affichées : celles de ce soir et celles déjà remplies. Tape un nom pour trouver les autres."}` : "";
+  $("#set-domain").value = CFG.domain ?? "yesss-fr.com"; $("#set-sep").value = CFG.sep ?? "-";
+  $("#dom-show").textContent = CFG.domain ?? "yesss-fr.com"; $("#dom-ex").textContent = guessEmail("AGDE");
+  $("#dir").innerHTML = rows.length ? rows.map((n, i) => `<tr><td>${esc(n)}</td><td><input id="dir-${i}" type="email" data-ag="${esc(n)}" value="${esc(CFG.emails[slug(n)]?.email || "")}" placeholder="${esc(guessEmail(n) || "adresse mail")}"></td></tr>`).join("")
+    : `<tr><td colspan="2" class="note">${names.length ? "Aucune agence à afficher. Tape un nom dans la recherche." : "Les agences apparaissent après un premier dépôt du tableau des agences."}</td></tr>`;
+}
+$("#dir-q").addEventListener("input", renderDir);
+$("#dir").addEventListener("change", e => { const n = e.target.dataset.ag; if (n) { saveCfg({ emails: { [slug(n)]: { nom: n, email: e.target.value.trim() } } }); renderMails(); } });
+// Adresse d'agence : celle enregistrée, sinon nom-de-l-agence@domaine (AGDE → agde@yesss-fr.com)
+function guessEmail(ag) {
+  const dom = (CFG.domain ?? "yesss-fr.com").trim(); if (!ag || !dom) return "";
+  const local = noAcc(ag).toLowerCase().replace(/['’]/g, " ").replace(/[^a-z0-9]+/g, " ").trim().split(" ").join(CFG.sep ?? "-");
+  return local ? `${local}@${dom}` : "";
+}
+const savedEmail = ag => CFG.emails[slug(ag)]?.email || "";
+const emailOf = ag => savedEmail(ag) || guessEmail(ag);
+$("#set-domain").addEventListener("change", e => { saveCfg({ domain: e.target.value.trim() }); renderDir(); renderMails(); });
+$("#set-sep").addEventListener("change", e => { saveCfg({ sep: e.target.value }); renderDir(); renderMails(); });
+
+/* ================= navigation ================= */
+function go(step) {
+  S.step = step;
+  document.querySelectorAll("[data-view]").forEach(v => v.hidden = v.dataset.view !== String(step));
+  document.querySelectorAll("#steps button").forEach(b => { const n = +b.dataset.step; b.setAttribute("aria-current", String(n) === String(step) ? "step" : "false");
+    b.disabled = (n === 2 && !S.pages.length) || (n >= 3 && !S.read); });
+  $("#steps").hidden = step === "R";
+  window.scrollTo({ top: 0 });
+}
+$("#steps").addEventListener("click", e => { const b = e.target.closest("[data-step]"); if (b && !b.disabled) go(+b.dataset.step); });
+let backTo = 1;
+$("#open-settings").addEventListener("click", () => { if (S.step !== "R") backTo = S.step; go("R"); });
+$("#close-settings").addEventListener("click", () => go(backTo));
+$("#to4").addEventListener("click", () => go(4));
+function stepStatus() {
+  const n = SLOTS.filter(([k]) => k === "pdf" ? S.files.pdf.length : S.files[k]).length;
+  $("#st1").textContent = n === 5 ? "fichiers prêts ✓" : `${n}/5 fichiers`;
+  document.querySelector('[data-step="1"]').classList.toggle("done", n === 5);
+  const ok = S.pages.filter(p => p.data).length;
+  $("#st2").textContent = S.pages.length ? `${ok}/${S.pages.length} pages lues` : "automatique";
+  document.querySelector('[data-step="2"]').classList.toggle("done", S.read);
+  const t = S.bls.filter(b => b.verdict === "A_TRANCHER").length;
+  $("#st3").textContent = S.read ? (t ? `${t} à trancher` : "tout est tranché ✓") : "trancher les doutes";
+  document.querySelector('[data-step="3"]').classList.toggle("done", S.read && !t);
+  const sent = Object.values(S.sent).filter(Boolean).length, total = document.querySelectorAll("#mails .mail").length;
+  $("#st4").textContent = S.applied ? `${sent}/${total} mails envoyés` : "télécharger, envoyer";
+  document.querySelector('[data-step="4"]').classList.toggle("done", S.applied && total && sent === total);
+}
+
+/* ================= dates ================= */
+const fmt = d => d ? `${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${d.getUTCFullYear()}` : "";
+const parseD = s => { const m = String(s||"").match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/); if (!m) return null;
+  let y = +m[3]; if (y < 100) y += 2000; const d = new Date(Date.UTC(y, +m[2]-1, +m[1])); return isNaN(d) ? null : d; };
+const sameDay = (a, b) => a && b && a.getUTCFullYear()===b.getUTCFullYear() && a.getUTCMonth()===b.getUTCMonth() && a.getUTCDate()===b.getUTCDate();
+function prevWorkingDay() { const n = new Date(); let d = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
+  do { d = new Date(d.getTime() - 864e5); } while ([0,6].includes(d.getUTCDay())); return d; }
+$("#recap-day").value = fmt(prevWorkingDay());
+
+/* ================= étape 1 ================= */
+function classify(f) {
+  const n = noAcc(f.name).toUpperCase();
+  if (/\.PDF$/.test(n)) return "pdf";
+  if (n.includes("REFUS")) return "refus";
+  if (n.includes("LITIGEUR")) return "litigeurs";
+  if (n.includes("AGENCE")) return "agences";
+  if (n.includes("LITIGE")) return "litiges";
+  return null;
+}
+function renderSlots() {
+  $("#slots").innerHTML = SLOTS.map(([k, label]) => {
+    const v = k === "pdf" ? S.files.pdf.map(f => f.name).join(", ") : S.files[k]?.name;
+    return `<div class="slot ${v ? "ok" : ""}"><b>${esc(label)}</b><span>${v ? "✓ " + esc(v) : "à déposer"}</span></div>`; }).join("");
+  const ready = S.files.pdf.length && SLOTS.slice(1).every(([k]) => S.files[k]);
+  $("#go").disabled = !ready;
+  $("#pick-note").textContent = ready ? "Tout est là." : "Il faut le scan et les 4 tableaux.";
+  stepStatus();
+}
+function addFiles(list) {
+  const unknown = [];
+  for (const f of list) { const k = classify(f); if (!k) { unknown.push(f.name); continue; }
+    if (k === "pdf") { if (!S.files.pdf.some(p => p.name === f.name)) S.files.pdf.push(f); } else S.files[k] = f; }
+  flash("#s1-msg", "warn", unknown.length ? `Je n'ai pas reconnu : ${unknown.join(", ")}. Le nom doit contenir LITIGES, REFUS, AGENCES ou LITIGEURS.` : "");
+  renderSlots();
+}
+$("#pick").addEventListener("change", e => addFiles(e.target.files));
+const drop = $("#drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+
+/* ================= excel ================= */
+const cv = c => { let v = c?.value; if (v && typeof v === "object" && !(v instanceof Date)) {
+  if ("result" in v) v = v.result; else if (v.richText) v = v.richText.map(t => t.text).join(""); else if ("text" in v) v = v.text; } return v; };
+async function loadWb(file) { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await file.arrayBuffer()); return wb; }
+const lastSheet = wb => wb.worksheets[wb.worksheets.length - 1];
+function monthSheet(wb, d) { const want = MOIS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+  return wb.worksheets.find(ws => noAcc(ws.name).toLowerCase().replace(/\s+/g, " ").trim() === want) || null; }
+function indexWorkbooks() {
+  S.exOui.clear(); S.exRefus.clear(); S.exRefusBL.clear(); S.agByCode = {};
+  S.wb.litiges.eachSheet(ws => ws.eachRow((r, i) => { if (i < 2) return; const bl = normBL(cv(r.getCell(3))); if (bl) S.exOui.add(bl); }));
+  S.wb.refus.eachSheet(ws => ws.eachRow((r, i) => { if (i < 2) return; const bl = normBL(cv(r.getCell(3))); const ref = cv(r.getCell(4));
+    if (bl) { S.exRefusBL.add(bl); String(ref ?? "").split(/[,;]/).forEach(x => S.exRefus.add(bl + "|" + normRef(x))); } }));
+  const names = new Set();
+  S.wb.agences.eachSheet(ws => ws.eachRow(r => r.eachCell((c, col) => {
+    const v = cv(c); if (typeof v !== "string" || !v.includes(":")) return;
+    const name = v.slice(0, v.lastIndexOf(":")).trim(); if (!name) return; names.add(name);
+    const code = cv(r.getCell(col - 1)); if (typeof code === "number") S.agByCode[code] = name; })));
+  S.agNames = [...names].sort();
+  S.litigeurs = [];
+  lastSheet(S.wb.litigeurs).eachRow((r, i) => { if (i < 2) return; const nom = String(cv(r.getCell(1)) ?? "").trim(), pre = String(cv(r.getCell(2)) ?? "").trim();
+    if (nom && pre && nom !== "null") S.litigeurs.push({ nom, pre, key: nom + " " + pre }); });
+  refreshInits(S.litigeurs);
+  const eq = S.litigeurs.map(({ nom, pre, key, init, clash }) => ({ nom, pre, key, init, clash }));
+  if (JSON.stringify(eq) !== JSON.stringify(CFG.equipe)) saveCfg({ equipe: eq });
+  if (JSON.stringify(S.agNames) !== JSON.stringify(CFG.agNames)) saveCfg({ agNames: S.agNames });
+  renderTeam(); renderDir();
+}
+
+/* ================= étape 2 : lecture ================= */
+const PROMPT = `Tu lis UNE page scannée d'un bon de livraison (BL) d'un entrepôt de matériel électrique (Yesss Saulce Logistique). Un agent a écrit à la main dessus sa décision sur le litige de l'agence.
+Réponds UNIQUEMENT avec un objet JSON, sans texte autour :
+{
+ "bl": "N° Mission / N° BL / Numéro vente (le premier nombre si 'Numéro vente 29127 / 1905935' → '29127'), ou null si absent",
+ "suite": true si c'est une page de continuation sans en-tête de BL,
+ "date": "JJ/MM/AAAA : date de préparation, sinon date de création, sinon date de livraison imprimée",
+ "ville": "ville du destinataire (agence), en MAJUSCULES",
+ "code_agence": "code à 5 chiffres sous le destinataire (ex. 11288) ou null",
+ "commandes": ["références commande type 288-010-000742"],
+ "verdict": "OUI si la mention manuscrite est 'ok'/'OK', NON si 'Non', AUCUN si ni l'un ni l'autre n'est écrit",
+ "litiges": [{"ref":"référence article sans le préfixe YSL_","commande":"commande de la ligne","qte_bl":nombre,"qte_litige":nombre manquant/réclamé d'après les annotations (sinon qte_bl)}],
+ "initiales": "initiales imprimées en pied de page après 'par' (ex. 'par NGO/NGO' → 'NGO') : c'est la personne qui a emballé ; null si absent",
+ "emballeur_ecrit": "prénom écrit à la main qui désigne la personne ayant emballé (ex. 'Marine'), ou null",
+ "confiance": "haute | moyenne | basse",
+ "remarque": "une phrase courte en français sur ce qui est ambigu, ou chaîne vide"
+}
+Les lignes en litige sont celles entourées, fléchées, cochées 'mqt'/'manque'/'manquant'/'non reçu' ou commentées. Ignore les emplacements de stock manuscrits (ex. 'M1 A02 11') et les comptages comme '42/55'.`;
+const blobToB64 = b => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(b); });
+function renderPageList() {
+  $("#pagelist").innerHTML = S.pages.map(p => `<span class="pg ${p.data ? "ok" : p.err ? "err" : p.run ? "run" : ""}" title="${esc(p.err || "")}">p${p.idx}</span>`).join("");
+  const done = S.pages.filter(p => p.data || p.err).length;
+  $("#prog").style.width = (S.pages.length ? 100 * done / S.pages.length : 0) + "%";
+  $("#prog-txt").textContent = `${done} / ${S.pages.length} pages`;
+  stepStatus();
+}
+async function readPages(list) {
+  const queue = [...list]; let stop = null;
+  const worker = async () => { while (queue.length && !stop) { const pg = queue.shift(); pg.run = true; pg.err = null; renderPageList();
+    for (let t = 0; t < 3 && !pg.data && !stop; t++) {
+      try { pg.data = await api("/api/read", { method: "POST", body: JSON.stringify({ image: await blobToB64(pg.blob), prompt: PROMPT }) }); }
+      catch (e) { if (e.code === 401) { await showLogin(); t--; continue; }
+        if (e.code === 500) { stop = e.message; break; }
+        pg.err = e.message; await new Promise(r => setTimeout(r, e.code === 429 ? 20000 : 2000)); } }
+    pg.run = false; renderPageList(); } };
+  await Promise.all([worker(), worker(), worker()]);
+  return stop;
+}
+$("#go").addEventListener("click", async () => {
+  $("#go").disabled = true; flash("#s1-msg", "", "");
+  try { for (const k of ["litiges","refus","agences","litigeurs"]) S.wb[k] = await loadWb(S.files[k]); indexWorkbooks(); }
+  catch (e) { flash("#s1-msg", "err", `Je n'arrive pas à ouvrir un des tableaux Excel (${e.message}). Vérifie que ce sont bien des .xlsx.`); $("#go").disabled = false; return; }
+  S.pages = []; S.read = false; S.applied = false; S.outputs = []; S.sent = {};
+  try {
+    let idx = 0;
+    for (const f of S.files.pdf) {
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p); const vp = page.getViewport({ scale: 1.7 });
+        const cnv = document.createElement("canvas"); cnv.width = vp.width; cnv.height = vp.height;
+        const ctx = cnv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cnv.width, cnv.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        const blob = await new Promise(r => cnv.toBlob(r, "image/jpeg", .82));
+        S.pages.push({ idx: ++idx, file: f.name, n: p, blob, url: URL.createObjectURL(blob), data: null });
+      }
+    }
+  } catch (e) { flash("#s1-msg", "err", `Le PDF ne s'ouvre pas (${e.message}).`); $("#go").disabled = false; return; }
+  go(2); renderPageList();
+  const stop = await readPages(S.pages);
+  afterRead(stop); $("#go").disabled = false;
+});
+$("#retry").addEventListener("click", async () => { $("#retry").disabled = true; const stop = await readPages(S.pages.filter(p => !p.data)); afterRead(stop); $("#retry").disabled = false; });
+function afterRead(stop) {
+  const bad = S.pages.filter(p => !p.data).length;
+  $("#retry").hidden = !bad;
+  flash("#s2-msg", stop ? "err" : bad ? "warn" : "ok", stop ? stop : bad ? `${bad} page(s) n'ont pas pu être lues. Relis-les, ou ajoute le BL à la main à l'étape 3.` : "Toutes les pages sont lues.");
+  buildBLs(); S.read = true; renderCards(); renderDir(); if (!stop) go(3); else stepStatus();
+}
+
+/* ================= fusion pages → BL ================= */
+function agencyFor(d) {
+  const ca = String(d.code_agence || "").replace(/\D/g, "");
+  if (ca.length === 5 && S.agByCode[+ca.slice(2)]) return S.agByCode[+ca.slice(2)];
+  for (const c of d.commandes || []) { const m = String(c).match(/^(\d{3})-010/); if (m && S.agByCode[+m[1]]) return S.agByCode[+m[1]]; }
+  const v = normName(d.ville); return S.agNames.find(n => normName(n) === v) || (d.ville || "").toUpperCase();
+}
+// Initiales en bas du BL = l'emballeur : 1re lettre du prénom + 2 premières du nom. Un prénom écrit à la main passe avant.
+function guessLitigeur(ini, prep) {
+  const p = normName(prep);
+  if (p) { const h = S.litigeurs.filter(l => p.split(" ").includes(normName(l.pre))); if (h.length === 1) return { key: h[0].key, note: "" }; }
+  const i = noAcc(ini || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
+  if (!i) return { key: "", note: "Pas d'initiales lisibles en bas du BL : choisis l'emballeur." };
+  if ((CFG.exclus || []).includes(i)) return { key: "", note: `Emballé par ${i} (service litiges) : pas compté.`, excl: true };
+  const hit = S.litigeurs.filter(l => l.init === i);
+  if (hit.length === 1) return { key: hit[0].key, note: "" };
+  if (hit.length > 1) return { key: "", note: `${i} correspond à ${hit.map(l => l.pre + " " + l.nom).join(" ou ")} : choisis.` };
+  return { key: "", note: `Personne avec les initiales ${i} dans le tableau des litigeurs : choisis l'emballeur.` };
+}
+function applyGuess(b) { const g = guessLitigeur(b.ini, b.prep); b.litigeur = g.key; b.litNote = g.note; b.excl = !!g.excl; }
+function buildBLs() {
+  const map = new Map(); let last = null;
+  for (const pg of S.pages) {
+    const d = pg.data; if (!d) continue;
+    let bl = normBL(d.bl); if (!bl && d.suite && last) bl = last; if (!bl) continue; last = bl;
+    if (!map.has(bl)) map.set(bl, { bl, pages: [], verdicts: new Set(), date: null, commandes: [], lines: new Map(), ini: null, prep: null, villes: [], codes: [], notes: [] });
+    const b = map.get(bl); b.pages.push(pg);
+    if (["OUI","NON"].includes(d.verdict)) b.verdicts.add(d.verdict);
+    b.date ||= parseD(d.date); (d.commandes || []).forEach(c => { if (c && !b.commandes.includes(c)) b.commandes.push(c); });
+    (d.litiges || []).forEach(l => { const k = normRef(l.ref); if (k && !b.lines.has(k)) b.lines.set(k, { ref: String(l.ref).replace(/^YSL_/i, "").replace(/__.*$/, ""), qte: l.qte_litige ?? l.qte_bl ?? "", cmd: l.commande || "" }); });
+    b.ini ||= d.initiales; b.prep ||= d.emballeur_ecrit || d.preparateur; if (d.ville) b.villes.push(d.ville); if (d.code_agence) b.codes.push(d.code_agence);
+    if (d.remarque) b.notes.push(d.remarque); if (d.confiance === "basse") b.low = true;
+  }
+  S.bls = [...map.values()].map(b => {
+    let verdict = "A_TRANCHER", why = "";
+    if (b.verdicts.size === 1) verdict = [...b.verdicts][0];
+    else if (b.verdicts.size === 2) why = "Deux copies se contredisent : une « ok », une « Non ». Regarde les deux pages et choisis.";
+    else why = "Ni oui ni non écrit sur le BL. Choisis Renvoi, Refus ou Ignorer.";
+    const lines = [...b.lines.values()];
+    const cmd = lines.find(l => l.cmd)?.cmd || b.commandes[0] || "";
+    const o = { id: "b" + b.bl, bl: b.bl, verdict, why, low: !!b.low, date: fmt(b.date), cmd, lines, ini: b.ini || "", prep: b.prep || "",
+      agence: agencyFor({ code_agence: b.codes[0], commandes: [cmd, ...b.commandes], ville: b.villes[0] }), notes: [...new Set(b.notes)].join(" "), pages: b.pages };
+    applyGuess(o); return o;
+  });
+  S.bls.forEach(markDup);
+}
+function markDup(b) {
+  b.dupOui = S.exOui.has(b.bl);
+  b.lines.forEach(l => l.dup = S.exRefus.has(b.bl + "|" + normRef(l.ref)));
+  b.dupNon = b.lines.length ? b.lines.every(l => l.dup) : S.exRefusBL.has(b.bl);
+  if (b.verdict === "OUI" && b.dupOui) { b.verdict = "IGNORER"; b.why = "Déjà dans LITIGES_CMD_ET_BL : rien à refaire."; }
+  if (b.verdict === "NON" && b.dupNon) { b.verdict = "IGNORER"; b.why = "Déjà dans REFUS_LITIGES : rien à refaire."; }
+}
+
+/* ================= étape 3 : vérifier ================= */
+const VERD = [["OUI","Renvoi"],["NON","Refus"],["A_TRANCHER","À trancher"],["IGNORER","Ignorer"]];
+const ORDER = { A_TRANCHER: 0, NON: 1, OUI: 2, IGNORER: 3 };
+function renderSummary() {
+  const c = k => S.bls.filter(b => b.verdict === k).length;
+  const items = [["ALL", "", S.bls.length, "BL lus"], ["A_TRANCHER", "warn", c("A_TRANCHER"), "à trancher"], ["NON", "ko", c("NON"), "refus"], ["OUI", "ok", c("OUI"), "renvois"], ["IGNORER", "", c("IGNORER"), "ignorés / doublons"]];
+  $("#summary").innerHTML = items.map(([k, cls, n, l]) => `<button class="stat ${cls}" data-filter="${k}" aria-pressed="${S.filter === k}"><b>${n}</b><span>${l}</span></button>`).join("");
+  const t = c("A_TRANCHER");
+  flash("#s3-msg", t ? "warn" : "ok", S.bls.length ? (t ? `Il reste ${t} BL à trancher. Ils sont en haut, en orange. Tant qu'ils ne sont pas tranchés, ils ne vont ni dans les tableaux ni dans les mails.` : "Tout est tranché. Vérifie les quantités, puis passe à l'étape 4.") : "");
+  stepStatus();
+}
+$("#summary").addEventListener("click", e => { const b = e.target.closest("[data-filter]"); if (b) { S.filter = b.dataset.filter; renderCards(); } });
+function renderCards() {
+  renderSummary();
+  if (!S.bls.length) { $("#cards").innerHTML = '<div class="empty">Aucun BL lu pour l\'instant.</div>'; return; }
+  const opts = S.litigeurs.map(l => `<option value="${esc(l.key)}">${esc(l.pre)} ${esc(l.nom)} (${esc(l.init)})</option>`).join("");
+  const list = S.bls.filter(b => S.filter === "ALL" || b.verdict === S.filter).sort((a, b) => ORDER[a.verdict] - ORDER[b.verdict]);
+  $("#cards").innerHTML = `<datalist id="ag-list">${S.agNames.map(n => `<option value="${esc(n)}">`).join("")}</datalist>` + (list.map(b => `
+  <article class="card v-${b.verdict}" data-id="${b.id}">
+    <div class="thumbs">${b.pages.map(p => `<img src="${p.url}" alt="Page ${p.idx} du scan" data-zoom="${p.url}">`).join("") || '<span class="note">ajouté à la main</span>'}</div>
+    <div class="cbody">
+      <div class="chead">
+        <span class="bl">BL ${esc(b.bl) || "?"}</span><span class="ag">${esc(b.agence)}</span>
+        ${b.low ? '<span class="chip warn">lecture incertaine</span>' : ""}
+        <div class="seg" role="group" aria-label="Décision pour le BL ${esc(b.bl)}">${VERD.map(([k, l]) => `<button class="${k}" data-v="${k}" aria-pressed="${b.verdict === k}">${l}</button>`).join("")}</div>
+      </div>
+      ${b.why ? `<p class="why">${esc(b.why)}</p>` : ""}
+      ${b.notes ? `<p class="why soft">Claude : ${esc(b.notes)}</p>` : ""}
+      <div class="fields">
+        <label class="f">N° BL<input class="mono" data-k="bl" id="${b.id}-bl" value="${esc(b.bl)}"></label>
+        <label class="f">Date<input class="mono" data-k="date" id="${b.id}-date" value="${esc(b.date)}" placeholder="jj/mm/aaaa"></label>
+        <label class="f">Agence<input data-k="agence" id="${b.id}-ag" list="ag-list" value="${esc(b.agence)}"></label>
+        <label class="f">Commande<input class="mono" data-k="cmd" id="${b.id}-cmd" value="${esc(b.cmd)}"></label>
+        <label class="f" ${b.verdict === "OUI" ? "" : "hidden"}>Emballé par${b.ini ? ` (${esc(b.ini)})` : ""}<select data-k="litigeur" id="${b.id}-lit"><option value="">— pas compté —</option>${opts}</select></label>
+      </div>
+      ${b.verdict === "OUI" && b.litNote && !b.litigeur ? `<p class="why ${b.excl ? "soft" : ""}">${esc(b.litNote)}</p>` : ""}
+      <div class="tablewrap"><table class="lines"><thead><tr><th>Réf en litige</th><th>Qté</th><th></th></tr></thead><tbody>
+        ${b.lines.map((l, i) => `<tr class="${l.dup ? "dup" : ""}" data-i="${i}"><td><input data-l="ref" id="${b.id}-r${i}" value="${esc(l.ref)}" aria-label="Référence"></td><td class="q"><input data-l="qte" id="${b.id}-q${i}" value="${esc(l.qte)}" inputmode="numeric" aria-label="Quantité"></td><td class="x"><button data-del="${i}" aria-label="Supprimer la ligne">×</button></td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="row"><button data-addline>+ ligne</button>${b.lines.some(l => l.dup) ? '<span class="note">Les lignes surlignées sont déjà dans REFUS_LITIGES et ne seront pas remises.</span>' : ""}</div>
+    </div>
+  </article>`).join("") || '<div class="empty">Aucun BL dans ce filtre.</div>');
+  S.bls.forEach(b => { const s = document.getElementById(b.id + "-lit"); if (s) s.value = b.litigeur; });
+}
+const findBL = el => S.bls.find(b => b.id === el.closest(".card")?.dataset.id);
+$("#cards").addEventListener("click", e => {
+  const z = e.target.closest("[data-zoom]"); if (z) { $("#zoom-img").src = z.dataset.zoom; $("#zoom").hidden = false; return; }
+  const b = findBL(e.target); if (!b) return;
+  const v = e.target.closest("[data-v]"); if (v) { b.verdict = v.dataset.v; if (b.verdict !== "A_TRANCHER") b.why = ""; renderCards(); afterEdit(); return; }
+  if (e.target.closest("[data-addline]")) { b.lines.push({ ref: "", qte: "" }); renderCards(); return; }
+  const d = e.target.closest("[data-del]"); if (d) { b.lines.splice(+d.dataset.del, 1); renderCards(); afterEdit(); }
+});
+$("#cards").addEventListener("change", e => {
+  const b = findBL(e.target); if (!b) return;
+  const k = e.target.dataset.k;
+  if (k) { b[k] = e.target.value.trim(); if (k === "bl") { b.bl = normBL(b.bl); b.id = b.id.startsWith("m") ? b.id : "b" + b.bl; } if (k === "litigeur") b.touchedLit = true; markDup(b); renderCards(); afterEdit(); }
+  if (e.target.dataset.l) { const i = +e.target.closest("tr").dataset.i; b.lines[i][e.target.dataset.l] = e.target.value.trim(); markDup(b); renderCards(); afterEdit(); }
+});
+function afterEdit() { if (S.applied) flash("#s4-msg", "warn", "Tu as modifié des BL après avoir rempli les tableaux. Clique à nouveau sur « Remplir les tableaux » pour prendre en compte les changements."); renderMails(); }
+$("#zoom").addEventListener("click", () => $("#zoom").hidden = true);
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#zoom").hidden = true; });
+$("#add-bl").addEventListener("click", () => {
+  S.bls.unshift({ id: "m" + Date.now(), bl: "", verdict: "A_TRANCHER", why: "BL ajouté à la main : remplis les champs puis choisis la décision.", date: "", agence: "", cmd: "", lines: [{ ref: "", qte: "" }], litigeur: "", ini: "", notes: "", pages: [] });
+  S.filter = "ALL"; renderCards();
+});
+$("#recap-day").addEventListener("change", renderMails);
+
+/* ================= étape 4 : tableaux ================= */
+function styleCopy(src) { try { return JSON.parse(JSON.stringify(src.style || {})); } catch { return {}; } }
+function appendRow(ws, vals) {
+  let last = ws.rowCount; while (last > 1 && vals.every((_, i) => { const v = cv(ws.getRow(last).getCell(i + 1)); return v === null || v === undefined || v === ""; })) last--;
+  const tmpl = ws.getRow(last), r = ws.getRow(last + 1);
+  vals.forEach((v, i) => { const c = r.getCell(i + 1); c.value = v; c.style = styleCopy(tmpl.getCell(i + 1)); });
+  return last + 1;
+}
+const asNum = v => /^\d+$/.test(String(v)) && !/^0/.test(String(v)) ? +v : v;
+$("#apply").addEventListener("click", async () => {
+  $("#apply").disabled = true; flash("#s4-msg", "", "");
+  const log = [], warn = []; const L = s => log.push(s);
+  const recap = parseD($("#recap-day").value);
+  const todo = S.bls.filter(b => b.verdict === "OUI" || b.verdict === "NON");
+  for (const b of todo) { const d = parseD(b.date); b.d = d; b.skip = !d; b.written = false; if (!d) warn.push(`BL ${b.bl} : date « ${b.date} » illisible, non reporté. Corrige-la à l'étape 3.`); }
+  for (const k of ["litiges","refus","agences","litigeurs"]) S.wb[k] = await loadWb(S.files[k]);   // repart des fichiers d'origine : jamais deux fois la même ligne
+  indexWorkbooks();
+  const ok = todo.filter(b => !b.skip);
+  for (const b of ok.filter(b => b.verdict === "OUI")) {
+    if (S.exOui.has(b.bl)) { L(`= BL ${b.bl} déjà dans LITIGES, ignoré`); continue; }
+    const ws = monthSheet(S.wb.litiges, b.d); if (!ws) { warn.push(`LITIGES : pas d'onglet « ${MOIS[b.d.getUTCMonth()]} ${b.d.getUTCFullYear()} » (BL ${b.bl}).`); continue; }
+    const r = appendRow(ws, [b.d, b.cmd, asNum(b.bl)]); S.exOui.add(b.bl); b.written = true; L(`+ LITIGES  ${ws.name} ligne ${r} : ${b.cmd} / ${b.bl}`);
+  }
+  for (const b of ok.filter(b => b.verdict === "NON")) {
+    const ws = monthSheet(S.wb.refus, b.d); if (!ws) { warn.push(`REFUS : pas d'onglet « ${MOIS[b.d.getUTCMonth()]} ${b.d.getUTCFullYear()} » (BL ${b.bl}).`); continue; }
+    for (const l of (b.lines.length ? b.lines : [{ ref: "", qte: "" }])) { const key = b.bl + "|" + normRef(l.ref);
+      if (S.exRefus.has(key)) { L(`= REFUS BL ${b.bl} ${l.ref} déjà présent, ignoré`); continue; }
+      const r = appendRow(ws, [b.d, b.agence, asNum(b.bl), l.ref, l.qte === "" ? null : asNum(l.qte)]); S.exRefus.add(key); b.written = true;
+      L(`+ REFUS    ${ws.name} ligne ${r} : ${b.agence} / ${b.bl} / ${l.ref} x${l.qte}`); }
+  }
+  for (const b of ok.filter(b => b.verdict === "OUI" && b.written)) {
+    const ws = monthSheet(S.wb.agences, b.d); if (!ws) { warn.push(`AGENCES : pas d'onglet pour le mois du BL ${b.bl}.`); continue; }
+    let hit = null; ws.eachRow(r => r.eachCell(c => { const v = cv(c); if (!hit && typeof v === "string" && v.includes(":") && normName(v.slice(0, v.lastIndexOf(":"))) === normName(b.agence)) hit = c; }));
+    if (!hit) { warn.push(`AGENCES : « ${b.agence} » introuvable dans ${ws.name}, compteur à mettre à la main.`); continue; }
+    const v = cv(hit), n = parseInt(v.slice(v.lastIndexOf(":") + 1)) || 0;
+    hit.value = `${v.slice(0, v.lastIndexOf(":")).trimEnd()} : ${n + 1}`; L(`+ AGENCES  ${ws.name} ${hit.address} : ${hit.value}`);
+  }
+  const lit = ok.filter(b => b.verdict === "OUI" && b.written);
+  if (lit.length) {
+    if (!recap) warn.push("LITIGEURS : jour du récap illisible (étape 3), tableau non mis à jour.");
+    else { const ws = monthSheet(S.wb.litigeurs, recap); let col = 0;
+      ws?.getRow(1).eachCell((c, i) => { const v = cv(c); if (v instanceof Date && sameDay(v, recap)) col = i; });
+      if (!ws || !col) warn.push(`LITIGEURS : pas de colonne pour le ${fmt(recap)}.`);
+      else for (const b of lit) {
+        if (!b.litigeur) { if (!b.excl) warn.push(`LITIGEURS : BL ${b.bl} sans emballeur choisi, pas compté.`); continue; }
+        let row = 0; ws.eachRow((r, i) => { if (i > 1 && `${String(cv(r.getCell(1))).trim()} ${String(cv(r.getCell(2))).trim()}` === b.litigeur) row = i; });
+        if (!row) { warn.push(`LITIGEURS : ${b.litigeur} introuvable.`); continue; }
+        const c = ws.getRow(row).getCell(col); c.value = (+cv(c) || 0) + 1; L(`+ LITIGEURS ${b.litigeur} ${c.address} = ${c.value}`); } }
+  }
+  S.outputs = [];
+  for (const k of ["litiges","refus","agences","litigeurs"]) {
+    try { const buf = await S.wb[k].xlsx.writeBuffer(); S.outputs.push({ name: S.files[k].name, url: URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })) }); }
+    catch (e) { warn.push(`${S.files[k].name} : écriture impossible (${e.message}).`); }
+  }
+  $("#log").hidden = false;
+  $("#log").textContent = (warn.length ? "À VOIR\n" + warn.map(w => "! " + w).join("\n") + "\n\n" : "") + "AJOUTÉ\n" + (log.join("\n") || "rien de nouveau");
+  $("#dl").hidden = false;
+  $("#dl").innerHTML = S.outputs.map(o => `<a class="btn" href="${o.url}" download="${esc(o.name)}">⬇ ${esc(o.name)}</a>`).join("") + `<button class="primary" id="dl-all">Tout télécharger</button>`;
+  S.applied = true; $("#apply").disabled = false; $("#apply").textContent = "Remplir à nouveau (après correction)";
+  renderMails();
+});
+$("#dl").addEventListener("click", async e => { if (e.target.id !== "dl-all") return;
+  for (const a of document.querySelectorAll("#dl a")) { a.click(); await new Promise(r => setTimeout(r, 600)); } });
+
+/* ================= mails ================= */
+const sign = () => "Cordialement,\n" + (CFG.signatures[ME] || ME || "");
+const capW = s => String(s).toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase());
+function recapText() {
+  const day = parseD($("#recap-day").value); const items = S.bls.filter(b => (b.verdict === "OUI" || b.verdict === "NON") && parseD(b.date));
+  const groups = new Map(); items.forEach(b => { if (!groups.has(b.date)) groups.set(b.date, []); groups.get(b.date).push(b); });
+  const keys = [...groups.keys()].sort((a, b) => parseD(b) - parseD(a));
+  const pl = (n, s, p) => `${n} ${n > 1 ? p : s}`;
+  const blocks = keys.map(k => { const g = groups.get(k), non = g.filter(b => b.verdict === "NON"), oui = g.filter(b => b.verdict === "OUI");
+    const when = sameDay(parseD(k), day) ? "sur la journée" : "sur " + k.slice(0, 5);
+    return `${pl(g.length, "Litige", "Litiges")} ${when} dont ${non.length} Refus.${non.length ? ` (${[...new Set(non.map(b => b.agence))].join(", ")})` : ""}\n${pl(oui.length, "Renvoi", "Renvois")}${oui.length ? ` (${[...new Set(oui.map(b => b.agence))].join(", ")})` : ""}`; });
+  const lit = {}; S.bls.filter(b => b.verdict === "OUI" && b.litigeur).forEach(b => lit[b.litigeur] = (lit[b.litigeur] || 0) + 1);
+  const who = ([k, n]) => `${capW(team().find(l => l.key === k)?.pre || k)} avec ${n} litige${n > 1 ? "s" : ""}`;
+  const line = x => Object.entries(lit).filter(([k]) => (CFG.barres[k] || "") === x).map(who).join(", ");
+  const none = line("");
+  return `Bonsoir ${CFG.recapName || "Séb"},\nPetit récap des litiges du ${fmt(day)} :\n\n${blocks.join("\n\n") || "Aucun litige."}\n\nConclusion générale des litigeurs du ${fmt(day).slice(0, 5)} :\n\n* Petites barres : ${line("P") || "Aucun."}\n\n* Grandes barres : ${line("G") || "Aucun."}${none ? `\n\n[À placer dans Réglages › Petites et grandes barres : ${none}]` : ""}\n\nBonne journée à tous,\n\n${sign()}`;
+}
+function agencyMail(list) {
+  const parts = list.map(b => {
+    const lines = b.lines.filter(l => l.ref).map(l => `   - ${l.ref}${l.qte !== "" ? " : " + l.qte + " pièce(s)" : ""}`).join("\n");
+    const head = `BL n° ${b.bl} du ${b.date}${b.cmd ? " (commande " + b.cmd + ")" : ""}`;
+    return b.verdict === "NON" ? `${head} : litige REFUSÉ.\nAprès vérification, la marchandise a bien été préparée et expédiée${lines ? " :\n" + lines : "."}`
+      : `${head} : litige ACCEPTÉ, nous procédons au renvoi${lines ? " de :\n" + lines : "."}`; });
+  const kinds = new Set(list.map(b => b.verdict)), many = list.length > 1;
+  return { subj: `Litige${many ? "s" : ""} BL ${list.map(b => b.bl).join(", ")} – ${kinds.size > 1 ? "Réponse" : kinds.has("NON") ? "Refus" : "Renvoi"}`,
+    body: `Bonjour,\n\nSuite à votre${many ? "s" : ""} litige${many ? "s" : ""}, voici notre réponse :\n\n${parts.join("\n\n")}\n\n${sign()}` };
+}
+const owa = (to, s, b) => `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(s)}&body=${encodeURIComponent(b)}`;
+const mto = (to, s, b) => `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(s)}&body=${encodeURIComponent(b)}`;
+function mailBlock(id, title, chip, to, subj, body, agence) {
+  const sent = !!S.sent[id];
+  return `<div class="mail${sent ? " sent" : ""}" data-mail="${id}">
+    <h3>${esc(title)} ${chip}<label class="sentbox"><input type="checkbox" data-sent="${id}"${sent ? " checked" : ""}> Envoyé</label></h3>
+    <label class="f">À${agence ? " · gardé dans l'annuaire pour la prochaine fois" : ""}<input type="email" id="${id}-to" data-agence="${esc(agence || "")}" value="${esc(to)}" placeholder="${agence ? "adresse de l'agence" : "adresse du destinataire"}"></label>
+    <label class="f">Objet<input id="${id}-s" value="${esc(subj)}"></label>
+    <textarea id="${id}-b" rows="${Math.min(16, body.split("\n").length + 1)}" aria-label="Texte du mail">${esc(body)}</textarea>
+    <div class="row"><a class="btn primary" data-open="${id}" href="#" target="_blank" rel="noopener">Ouvrir dans Outlook</a><a class="btn" data-mailto="${id}" href="#">Outlook (application)</a><button data-copy="${id}">Copier le texte</button></div>
+  </div>`;
+}
+function renderMails() {
+  if (!S.applied) { stepStatus(); return; }
+  const byAg = new Map(); S.bls.filter(b => b.verdict === "OUI" || b.verdict === "NON").forEach(b => { if (!byAg.has(b.agence)) byAg.set(b.agence, []); byAg.get(b.agence).push(b); });
+  let html = mailBlock("recap", "Récap du soir", "", CFG.recapTo || "", `Récap litiges du ${$("#recap-day").value}`, recapText(), "");
+  for (const [ag, list] of byAg) { const m = agencyMail(list); const non = list.filter(b => b.verdict === "NON").length, oui = list.length - non;
+    html += mailBlock("ag-" + slug(ag), ag || "Agence ?", `${oui ? `<span class="chip ok">${oui} renvoi</span>` : ""}${non ? `<span class="chip ko">${non} refus</span>` : ""}${savedEmail(ag) ? "" : emailOf(ag) ? '<span class="chip warn">adresse par défaut, à vérifier la 1re fois</span>' : '<span class="chip warn">adresse à saisir</span>'}`, emailOf(ag), m.subj, m.body, ag); }
+  const pend = S.bls.filter(b => b.verdict === "A_TRANCHER");
+  $("#mails").innerHTML = (pend.length ? `<div class="msg warn">Encore ${pend.length} BL à trancher à l'étape 3 (${esc(pend.map(b => b.bl + " " + b.agence).join(", "))}). Ils ne sont pas dans les mails.</div>` : "") + html;
+  updSent();
+}
+function updSent() { const t = document.querySelectorAll("#mails .mail").length, s = [...document.querySelectorAll("[data-sent]")].filter(x => x.checked).length;
+  $("#sent-count").textContent = t ? `${s} / ${t} envoyés` : ""; stepStatus(); }
+const vals = id => [$(`#${id}-to`).value.trim(), $(`#${id}-s`).value, $(`#${id}-b`).value];
+$("#mails").addEventListener("click", async e => {
+  const o = e.target.closest("[data-open]"), m = e.target.closest("[data-mailto]"), c = e.target.closest("[data-copy]");
+  if (o) o.href = owa(...vals(o.dataset.open));
+  if (m) m.href = mto(...vals(m.dataset.mailto));
+  if (c) { const [, s, b] = vals(c.dataset.copy);
+    try { await navigator.clipboard.writeText(s + "\n\n" + b); c.textContent = "Copié ✓"; } catch { const t = $(`#${c.dataset.copy}-b`); t.focus(); t.select(); c.textContent = "Sélectionné : Ctrl+C"; } }
+});
+$("#mails").addEventListener("change", e => {
+  const a = e.target.dataset.agence; if (a) { saveCfg({ emails: { [slug(a)]: { nom: a, email: e.target.value.trim() } } }); renderDir(); }
+  if (e.target.id === "recap-to") { saveCfg({ recapTo: e.target.value.trim() }); renderSettings(); }
+  const s = e.target.dataset.sent; if (s) { S.sent[s] = e.target.checked; e.target.closest(".mail").classList.toggle("sent", e.target.checked); updSent();
+    // une adresse par défaut qui a servi devient l'adresse enregistrée de l'agence
+    const inp = $(`#${s}-to`), ag = inp?.dataset.agence;
+    if (e.target.checked && ag && !savedEmail(ag) && inp.value.trim()) { saveCfg({ emails: { [slug(ag)]: { nom: ag, email: inp.value.trim() } } }); renderDir(); } }
+});
+
+/* ================= démarrage ================= */
+renderUsers(); renderSlots(); go(1); loadConfig();
+})();
+</script>
+</body>
+</html>
