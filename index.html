@@ -258,12 +258,12 @@ td{padding:4px 6px;border-bottom:1px solid var(--soft)}
     <button class="primary" type="submit">Entrer</button></form>
 </div>
 
-<script src="/vendor/pdf.min.js"></script>
-<script src="/vendor/exceljs.min.js"></script>
+<script src="/pdf.min.js"></script>
+<script src="/exceljs.min.js"></script>
 <script>
 (() => {
 "use strict";
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const MOIS = ["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"];
